@@ -105,7 +105,7 @@ const store = {
   get(k){ try{ return localStorage.getItem(k) || ""; }catch(e){ return ""; } },
   set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
 };
-const MODEL = "gemini-2.5-flash";
+const MODEL = "gemini-3.8-flash";
 let history = [];
 let busy = false;
 
