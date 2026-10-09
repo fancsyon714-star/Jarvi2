@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Jarvis">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#050d1a">
+<title>Jarvis</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' fill='%23050d1a'/%3E%3Ccircle cx='90' cy='90' r='54' fill='none' stroke='%237fe8ff' stroke-width='8'/%3E%3Ccircle cx='90' cy='90' r='24' fill='%237fe8ff'/%3E%3C/svg%3E">
+<style>
+:root{--bg:#050d1a;--panel:#0a1a30;--line:#1b3a5e;--ice:#7fe8ff;--amber:#ffb347;--text:#d8ecf7;--dim:#7a96ad;color-scheme:dark}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{background:radial-gradient(ellipse at 50% 30%,#0b2442 0%,var(--bg) 65%);color:var(--text);font:16px/1.45 "Avenir Next",system-ui,sans-serif;display:flex;flex-direction:column;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+header{display:flex;justify-content:space-between;align-items:center;padding:12px 18px}
+header b{font-weight:600;letter-spacing:.18em;color:var(--ice)}
+.icon{background:none;border:1px solid var(--line);color:var(--dim);border-radius:10px;padding:6px 11px;font:inherit;font-size:14px}
+.stage{display:flex;flex-direction:column;align-items:center;padding:6px 0 0}
+.reactor{width:168px;height:168px;border:0;background:none;padding:0;position:relative;cursor:pointer}
+.reactor svg{width:100%;height:100%;overflow:visible}
+.ring{transform-origin:90px 90px;animation:spin 24s linear infinite}
+.ring2{transform-origin:90px 90px;animation:spin 14s linear infinite reverse}
+@keyframes spin{to{transform:rotate(360deg)}}
+.core{transform-origin:90px 90px;transition:fill .3s}
+body[data-s=listening] .core{fill:var(--amber);animation:pulse 1s ease-in-out infinite}
+body[data-s=thinking] .ring{animation-duration:2.5s}
+body[data-s=speaking] .core{animation:pulse .6s ease-in-out infinite}
+@keyframes pulse{50%{transform:scale(1.35)}}
+#status{color:var(--dim);font-size:14px;margin-top:6px;min-height:21px}
+.briefs{display:flex;gap:8px;padding:12px 18px 4px}
+.briefs button{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:10px 6px;font:inherit;font-size:14px}
+.briefs button.hot{border-color:var(--amber);color:var(--amber)}
+#log{flex:1;overflow-y:auto;padding:10px 18px;display:flex;flex-direction:column;gap:10px}
+.m{max-width:88%;padding:9px 13px;border-radius:14px;white-space:pre-wrap;overflow-wrap:anywhere}
+.u{align-self:flex-end;background:#12335a}
+.j{align-self:flex-start;background:var(--panel);border:1px solid var(--line)}
+.e{align-self:flex-start;color:var(--amber);border:1px solid var(--amber)}
+form{display:flex;gap:8px;padding:8px 14px 12px}
+input{flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:11px 13px;font:inherit;font-size:16px}
+form button{background:var(--ice);color:#04101f;border:0;border-radius:12px;padding:0 16px;font:inherit;font-weight:600}
+dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:16px;width:min(92vw,420px);padding:18px}
+dialog::backdrop{background:#000a}
+dialog label{display:block;margin:12px 0 4px;color:var(--dim);font-size:14px}
+dialog input{width:100%}
+dialog p{font-size:14px;color:var(--dim);margin:8px 0}
+dialog a{color:var(--ice)}
+.row{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
+.row button{border-radius:10px;padding:9px 16px;font:inherit;border:1px solid var(--line);background:none;color:var(--text)}
+.row .ok{background:var(--ice);color:#04101f;border:0;font-weight:600}
+#hud{position:fixed;left:0;right:0;bottom:0;max-height:72vh;background:#071428f2;border-top:1px solid var(--ice);box-shadow:0 -10px 40px #7fe8ff33;border-radius:20px 20px 0 0;transform:translateY(105%);transition:transform .45s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;z-index:5;padding-bottom:env(safe-area-inset-bottom,0px)}
+#hud.open{transform:none}
+#hud .top{display:flex;justify-content:space-between;align-items:center;padding:14px 18px 8px}
+#hud .top b{color:var(--ice);font-weight:600;letter-spacing:.06em}
+#hud .top span{color:var(--dim);font-size:13px;margin-left:8px}
+#cards{overflow-y:auto;padding:4px 14px 16px;display:flex;flex-direction:column;gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--amber);border-radius:12px;padding:11px 13px;text-align:left;color:var(--text);font:inherit;width:100%}
+.card h3{margin:0 0 4px;font-size:16px;font-weight:600;line-height:1.3}
+.card p{margin:0;font-size:14px;color:#b4cbdb}
+.card small{display:block;margin-top:6px;color:var(--dim);font-size:12px}
+.card a{color:var(--ice)}
+#hud.open .card{animation:in .4s both}
+#hud.open .card:nth-child(2){animation-delay:.12s}#hud.open .card:nth-child(3){animation-delay:.24s}#hud.open .card:nth-child(4){animation-delay:.36s}#hud.open .card:nth-child(5){animation-delay:.48s}#hud.open .card:nth-child(n+6){animation-delay:.6s}
+@keyframes in{from{opacity:0;transform:translateY(14px)}}
+@media (prefers-reduced-motion:reduce){#hud,.card{transition:none!important;animation:none!important}}
+@media (prefers-reduced-motion:reduce){.ring,.ring2,.core{animation:none!important}}
+</style>
+</head>
+<body data-s="idle">
+<header><b>JARVIS</b><button class="icon" id="cfg">Einstellungen</button></header>
+<div class="stage">
+  <button class="reactor" id="mic" aria-label="Sprechen">
+    <svg viewBox="0 0 180 180">
+      <g class="ring" fill="none" stroke="#7fe8ff" stroke-width="2"><circle cx="90" cy="90" r="84" stroke-dasharray="6 10" opacity=".55"/><path d="M90 6a84 84 0 0 1 72 42" stroke-width="5"/><path d="M90 174a84 84 0 0 1-72-42" stroke-width="5"/></g>
+      <g class="ring2" fill="none" stroke="#7fe8ff" stroke-width="2"><circle cx="90" cy="90" r="62" opacity=".4"/><path d="M28 90a62 62 0 0 1 20-45" stroke="#ffb347" stroke-width="4"/><path d="M152 90a62 62 0 0 1-20 45" stroke="#ffb347" stroke-width="4"/></g>
+      <circle cx="90" cy="90" r="40" fill="#0a1a30" stroke="#7fe8ff" stroke-width="3"/>
+      <circle class="core" cx="90" cy="90" r="20" fill="#7fe8ff"/>
+    </svg>
+  </button>
+  <div id="status">Tippe auf den Reaktor und sprich</div>
+</div>
+<div class="briefs"><button id="bm">Morgen-Briefing</button><button id="be">Abend-Briefing</button></div>
+<div id="log"></div>
+<form id="f"><input id="q" placeholder="Oder schreib Jarvis…" autocomplete="off" enterkeyhint="send"><button>Senden</button></form>
+
+<section id="hud" aria-label="Nachrichten">
+  <div class="top"><div><b id="hudTitle">Tagesschau</b><span id="hudSub"></span></div><button class="icon" id="hudClose">Schließen</button></div>
+  <div id="cards"></div>
+</section>
+
+<dialog id="dlg">
+  <b>Einstellungen</b>
+  <p>Jarvis nutzt die kostenlose Gemini-API von Google. Key holen: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>. Er bleibt nur auf diesem Gerät gespeichert.</p>
+  <label for="key">Gemini API-Key</label>
+  <input id="key" type="password" autocomplete="off">
+  <label for="name">Wie soll Jarvis dich nennen?</label>
+  <input id="name" placeholder="z. B. Tony">
+  <div class="row"><button id="cancel" type="button">Abbrechen</button><button class="ok" id="save" type="button">Speichern</button></div>
+</dialog>
+
+<script>
+const $ = id => document.getElementById(id);
+const store = {
+  get(k){ try{ return localStorage.getItem(k) || ""; }catch(e){ return ""; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+};
+const MODEL = "gemini-2.5-flash";
+let history = [];
+let busy = false;
+
+function setState(s, text){ document.body.dataset.s = s; if(text !== undefined) $("status").textContent = text; }
+function add(cls, text){
+  const d = document.createElement("div"); d.className = "m " + cls; d.textContent = text;
+  $("log").appendChild(d); $("log").scrollTop = $("log").scrollHeight; return d;
+}
+function systemPrompt(){
+  const name = store.get("name");
+  const now = new Date().toLocaleString("de-DE",{dateStyle:"full",timeStyle:"short"});
+  return "Du bist Jarvis, ein höflicher, trockener und effizienter Assistent im Stil des Iron-Man-Butlers." +
+    (name ? " Sprich den Nutzer mit „" + name + "“ an." : "") +
+    " Antworte immer auf Deutsch, kurz und gesprochen natürlich, ohne Markdown, Listen-Symbole oder Links. Aktuelles Datum und Uhrzeit: " + now + ".";
+}
+
+async function ask(userText, plain){
+  const key = store.get("key");
+  if(!key){ add("e","Bitte zuerst den API-Key in den Einstellungen eintragen."); $("dlg").showModal(); return; }
+  if(busy) return;
+  if(!plain && /tagesschau|nachrichten|news|breaking|briefing|schlagzeilen/i.test(userText)) return news(userText);
+  busy = true; speechSynthesis.cancel();
+  add("u", userText);
+  history.push({role:"user", parts:[{text:userText}]});
+  setState("thinking","Jarvis denkt nach…");
+  try{
+    if(location.protocol === "file:") throw new Error("Die Datei wurde lokal geöffnet. Öffne Jarvis über den GitHub-Pages-Link (https://…).");
+    const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + MODEL + ":generateContent?key=" + encodeURIComponent(key), {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        systemInstruction:{parts:[{text:systemPrompt()}]},
+        contents: history.slice(-20),
+        tools:[{google_search:{}}]
+      })
+    });
+    const data = await r.json();
+    if(!r.ok) throw new Error(data.error && data.error.message || ("Fehler " + r.status));
+    const parts = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts || [];
+    const text = parts.map(p => p.text || "").join("").trim() || "Dazu habe ich keine Antwort erhalten.";
+    history.push({role:"model", parts:[{text}]});
+    add("j", text);
+    speak(text);
+  }catch(err){
+    history.pop();
+    const net = /load failed|failed to fetch|networkerror/i.test(err.message);
+    add("e", net ? "Keine Verbindung zu Google. Prüfe Internet, VPN, iCloud Privatrelais und Werbeblocker für diese Seite." : "Das hat nicht geklappt: " + err.message);
+    setState("idle","Bereit");
+  }finally{ busy = false; }
+}
+
+function speak(text){
+  const clean = text.replace(/[*_#`>]/g,"").replace(/https?:\/\/\S+/g,"");
+  const u = new SpeechSynthesisUtterance(clean);
+  u.lang = "de-DE";
+  const v = speechSynthesis.getVoices().filter(v => v.lang && v.lang.startsWith("de"));
+  const best = v.find(x => /enhanced|premium|erweitert/i.test(x.name)) || v[0];
+  if(best) u.voice = best;
+  u.rate = 1.02; u.pitch = .9;
+  u.onstart = () => setState("speaking","Jarvis spricht…");
+  u.onend = u.onerror = () => setState("idle","Bereit");
+  speechSynthesis.speak(u);
+}
+
+async function gem(contents, search){
+  const key = store.get("key");
+  const body = {systemInstruction:{parts:[{text:systemPrompt()}]}, contents};
+  if(search) body.tools = [{google_search:{}}];
+  const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + MODEL + ":generateContent?key=" + encodeURIComponent(key), {
+    method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)
+  });
+  const data = await r.json();
+  if(!r.ok) throw new Error(data.error && data.error.message || ("Fehler " + r.status));
+  const parts = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts || [];
+  return parts.map(p => p.text || "").join("").trim();
+}
+
+async function tagesschauDirect(){
+  const r = await fetch("https://www.tagesschau.de/api2u/news/");
+  if(!r.ok) throw new Error("Tagesschau " + r.status);
+  const j = await r.json();
+  return (j.news || []).filter(n => n.title && (!n.type || n.type === "story")).slice(0,6).map(n => ({
+    title: n.title,
+    summary: n.firstSentence || n.topline || "",
+    url: n.shareURL || n.detailsweb || "",
+    date: n.date || ""
+  }));
+}
+
+async function tagesschauViaSearch(kind){
+  const t = await gem([{role:"user", parts:[{text:
+    "Suche aktuell auf tagesschau.de nach den 5 wichtigsten Meldungen" + (kind === "morning" ? " seit gestern Abend" : " von heute") +
+    ". Antworte ausschließlich mit einem JSON-Array ohne Markdown, jedes Objekt mit den Feldern title, summary (1 bis 2 Sätze) und url (nur wenn sicher bekannt, sonst leer)."}]}], true);
+  const m = t.match(/\[[\s\S]*\]/);
+  if(!m) throw new Error("Keine Meldungen gefunden.");
+  return JSON.parse(m[0]).slice(0,6);
+}
+
+function showHud(items){
+  const box = $("cards"); box.textContent = "";
+  items.forEach(it => {
+    const c = document.createElement("button"); c.className = "card";
+    const h = document.createElement("h3"); h.textContent = it.title; c.appendChild(h);
+    if(it.summary){ const p = document.createElement("p"); p.textContent = it.summary; c.appendChild(p); }
+    const s = document.createElement("small");
+    s.textContent = "Tagesschau" + (it.date ? " · " + new Date(it.date).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) : "") + " · Tippen für mehr";
+    c.appendChild(s);
+    c.onclick = () => { hideHud(); ask("Erzähl mir mehr zu dieser Meldung der Tagesschau: " + it.title, true); };
+    box.appendChild(c);
+  });
+  $("hudSub").textContent = items.length + " Meldungen";
+  $("hud").classList.add("open");
+}
+function hideHud(){ $("hud").classList.remove("open"); }
+
+async function news(text){
+  busy = true; speechSynthesis.cancel();
+  add("u", text);
+  const kind = /abend|heute/i.test(text) ? "evening" : "morning";
+  setState("thinking","Jarvis ruft die Tagesschau ab…");
+  try{
+    let items;
+    try{ items = await tagesschauDirect(); if(!items.length) throw 0; }
+    catch(e){ items = await tagesschauViaSearch(kind); }
+    showHud(items);
+    const list = items.map((i,n) => (n+1) + ". " + i.title + (i.summary ? " – " + i.summary : "")).join("\n");
+    const spoken = await gem([{role:"user", parts:[{text:
+      "Hier sind aktuelle Meldungen der Tagesschau:\n" + list +
+      "\n\nErzähl mir daraus als gesprochenes " + (kind === "morning" ? "Morgen" : "Abend") + "-Briefing, was passiert ist. Nutze nur diese Meldungen, kurz und flüssig, maximal 100 Wörter."}]}], false);
+    history.push({role:"user", parts:[{text:text}]}, {role:"model", parts:[{text:spoken}]});
+    add("j", spoken);
+    speak(spoken);
+  }catch(err){
+    const net = /load failed|failed to fetch|networkerror/i.test(err.message);
+    add("e", net ? "Keine Verbindung. Prüfe Internet, VPN und Werbeblocker." : "Das hat nicht geklappt: " + err.message);
+    setState("idle","Bereit");
+  }finally{ busy = false; }
+}
+$("hudClose").onclick = hideHud;
+
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null;
+function listen(){
+  if(!SR){ add("e","Spracheingabe wird hier nicht unterstützt. Nutze das Mikrofon auf der Tastatur."); $("q").focus(); return; }
+  speechSynthesis.cancel();
+  if(rec){ rec.stop(); return; }
+  rec = new SR(); rec.lang = "de-DE"; rec.interimResults = true; rec.continuous = false;
+  let final = "";
+  rec.onstart = () => setState("listening","Ich höre zu…");
+  rec.onresult = e => {
+    let t = ""; for(const r of e.results) t += r[0].transcript;
+    final = t; $("status").textContent = t;
+  };
+  rec.onerror = e => { setState("idle","Bereit"); if(e.error === "not-allowed") add("e","Mikrofon-Zugriff verweigert. Erlaube ihn in den Safari-Einstellungen."); };
+  rec.onend = () => { rec = null; if(final.trim()) ask(final.trim()); else setState("idle","Bereit"); };
+  rec.start();
+}
+
+const BRIEF = {
+  morning: "Gib mir das Morgen-Briefing: Was ist in der letzten Nacht und seit gestern Abend weltweit und in Deutschland Wichtiges passiert? Recherchiere aktuell im Web und nenne die 5 wichtigsten Meldungen, je 1 bis 2 Sätze.",
+  evening: "Gib mir das Abend-Briefing: Was waren heute die wichtigsten Ereignisse weltweit und in Deutschland? Recherchiere aktuell im Web und nenne die 5 wichtigsten Meldungen, je 1 bis 2 Sätze."
+};
+
+$("mic").onclick = listen;
+$("bm").onclick = () => ask(BRIEF.morning);
+$("be").onclick = () => ask(BRIEF.evening);
+$("f").onsubmit = e => { e.preventDefault(); const v = $("q").value.trim(); if(v){ $("q").value = ""; ask(v); } };
+$("cfg").onclick = () => { $("key").value = store.get("key"); $("name").value = store.get("name"); $("dlg").showModal(); };
+$("cancel").onclick = () => $("dlg").close();
+$("save").onclick = () => { store.set("key",$("key").value.trim()); store.set("name",$("name").value.trim()); $("dlg").close(); };
+
+(function init(){
+  const h = new Date().getHours();
+  (h < 11 ? $("bm") : h >= 17 ? $("be") : null)?.classList.add("hot");
+  const n = store.get("name");
+  add("j", (h < 11 ? "Guten Morgen" : h < 18 ? "Guten Tag" : "Guten Abend") + (n ? ", " + n : "") + ". Wie kann ich helfen?");
+  if(!store.get("key")) setTimeout(() => $("dlg").showModal(), 400);
+  speechSynthesis.getVoices();
+})();
+</script>
+</body>
+</html>
