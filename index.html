@@ -133,19 +133,7 @@ async function ask(userText, plain){
   setState("thinking","Jarvis denkt nach…");
   try{
     if(location.protocol === "file:") throw new Error("Die Datei wurde lokal geöffnet. Öffne Jarvis über den GitHub-Pages-Link (https://…).");
-    const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + MODEL + ":generateContent?key=" + encodeURIComponent(key), {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({
-        systemInstruction:{parts:[{text:systemPrompt()}]},
-        contents: history.slice(-20),
-        tools:[{google_search:{}}]
-      })
-    });
-    const data = await r.json();
-    if(!r.ok) throw new Error(data.error && data.error.message || ("Fehler " + r.status));
-    const parts = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts || [];
-    const text = parts.map(p => p.text || "").join("").trim() || "Dazu habe ich keine Antwort erhalten.";
+    const text = (await gem(history.slice(-20), /heute|aktuell|wetter|gestern|preis|kurs|wer ist|ergebnis|spielstand/i.test(userText))) || "Dazu habe ich keine Antwort erhalten.";
     history.push({role:"model", parts:[{text}]});
     add("j", text);
     speak(text);
@@ -170,17 +158,52 @@ function speak(text){
   speechSynthesis.speak(u);
 }
 
-async function gem(contents, search){
+let models = null;
+async function getModels(key){
+  if(models) return models;
+  let list = [];
+  try{
+    const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key=" + encodeURIComponent(key));
+    const j = await r.json();
+    list = (j.models || []).filter(m => (m.supportedGenerationMethods || []).includes("generateContent"))
+      .map(m => m.name.replace("models/",""))
+      .filter(n => /^gemini-[\d.]+-flash/.test(n) && !/image|tts|live|audio|embedding|robotics|exp/.test(n));
+  }catch(e){}
+  const ver = n => parseFloat((n.match(/gemini-([\d.]+)/) || [0,0])[1]);
+  list.sort((a,b) => (/lite/.test(a) - /lite/.test(b)) || ver(b) - ver(a));
+  ["gemini-flash-latest","gemini-flash-lite-latest"].forEach(n => { if(!list.includes(n)) list.push(n); });
+  models = list;
+  return models;
+}
+
+async function gem(contents, search, strict){
   const key = store.get("key");
-  const body = {systemInstruction:{parts:[{text:systemPrompt()}]}, contents};
-  if(search) body.tools = [{google_search:{}}];
-  const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + MODEL + ":generateContent?key=" + encodeURIComponent(key), {
-    method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)
-  });
-  const data = await r.json();
-  if(!r.ok) throw new Error(data.error && data.error.message || ("Fehler " + r.status));
-  const parts = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts || [];
-  return parts.map(p => p.text || "").join("").trim();
+  let lastErr = "";
+  for(const m of (await getModels(key)).slice(0,6)){
+    for(const useSearch of (search ? (strict ? [true] : [true,false]) : [false])){
+      const body = {systemInstruction:{parts:[{text:systemPrompt()}]}, contents};
+      if(useSearch) body.tools = [{google_search:{}}];
+      for(let t = 0; t < 2; t++){
+        const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + m + ":generateContent?key=" + encodeURIComponent(key), {
+          method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)
+        });
+        const data = await r.json().catch(() => ({}));
+        if(r.ok){
+          const parts = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts || [];
+          const text = parts.map(p => p.text || "").join("").trim();
+          if(text) return text;
+          lastErr = "Leere Antwort"; break;
+        }
+        lastErr = data.error && data.error.message || ("Fehler " + r.status);
+        if(r.status === 503 && t === 0){ await new Promise(x => setTimeout(x, 1500)); continue; }
+        break;
+      }
+      if(!/quota|exceeded|demand|not found|no longer|unavailable|not supported|Leere|429|503|404/i.test(lastErr)) throw new Error(lastErr);
+    }
+  }
+  if(/quota|exceeded/i.test(lastErr)) throw new Error("Das kostenlose Limit von Google ist gerade erreicht. Warte ein paar Minuten und versuche es erneut.");
+  if(/demand|unavailable|503/i.test(lastErr)) throw new Error("Google ist gerade überlastet. Versuche es in ein paar Minuten erneut.");
+  throw new Error(lastErr);
 }
 
 async function tagesschauDirect(){
@@ -198,7 +221,7 @@ async function tagesschauDirect(){
 async function tagesschauViaSearch(kind){
   const t = await gem([{role:"user", parts:[{text:
     "Suche aktuell auf tagesschau.de nach den 5 wichtigsten Meldungen" + (kind === "morning" ? " seit gestern Abend" : " von heute") +
-    ". Antworte ausschließlich mit einem JSON-Array ohne Markdown, jedes Objekt mit den Feldern title, summary (1 bis 2 Sätze) und url (nur wenn sicher bekannt, sonst leer)."}]}], true);
+    ". Antworte ausschließlich mit einem JSON-Array ohne Markdown, jedes Objekt mit den Feldern title, summary (1 bis 2 Sätze) und url (nur wenn sicher bekannt, sonst leer)."}]}], true, true);
   const m = t.match(/\[[\s\S]*\]/);
   if(!m) throw new Error("Keine Meldungen gefunden.");
   return JSON.parse(m[0]).slice(0,6);
